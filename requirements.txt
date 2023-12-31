@@ -1,0 +1,4 @@
+discord
+selenium
+python-dotenv
+pyvirtualdisplay
