@@ -58,7 +58,7 @@ def get_course_list(semester, kurikulum, tahun=datetime.datetime.now().year):
 
     WebDriverWait(driver, 20).until(expected_conditions.presence_of_element_located((By.XPATH, "/html/body/div[@class='container']/div[@id='content']/div[@id='content']/div[@id='main-content']/h2[@class='content-title']")))
 
-    classes = driver.find_elements(By.XPATH, "//td[contains(text(), '" + kurikulum + "') and ancestor::table/preceding-sibling::h4[1][contains(text(), '" + f"{semester} {tahun}/{}" + "')]]".format(tahun+1))
+    classes = driver.find_elements(By.XPATH, "//td[contains(text(), '" + kurikulum + "') and ancestor::table/preceding-sibling::h4[1][contains(text(), '" + f"{semester} {tahun}/{tahun+1}" + "')]]")
 
     if classes != []:
         log.info(f"{semester.upper()} {tahun}/{tahun+1} IS OPEN")
@@ -124,8 +124,8 @@ async def on_message(msg: discord.Message):
 @tasks.loop(hours=1)
 async def send_message():
     channel = bot.get_channel(CHANNEL_ID)
-    embed = get_course_list("Genap", "02.00.12.01-2020", bot.last_message)
-    if embed is not None:
+    embed = get_course_list("Genap", "02.00.12.01-2020")
+    if embed.description != bot.last_message:
         bot.last_message = embed.description
         await channel.send(embed=embed)
         log.info(f"SENT TO {channel.guild}/{channel.name}")
