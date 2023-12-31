@@ -67,7 +67,7 @@ def get_course_list(semester, kurikulum, tahun=datetime.datetime.now().year):
     else:
         log.info(f"{semester.upper()} {tahun}/{tahun+1} IS NOT OPEN")
         msg = f"{semester} {tahun}/{tahun+1} is not open."
-
+    log.info(msg)
     return discord.Embed(
         title="CekAsdosan",
         description=msg
@@ -77,7 +77,9 @@ def get_course_list(semester, kurikulum, tahun=datetime.datetime.now().year):
 @bot.event
 async def on_ready():
     os.system("clear")
-    bot.last_message = ""
+    with open("last_message.cekasdosan", "r") as f:
+        bot.last_message = f.read()
+        log.info(bot.last_message)
     send_message.start()
     log.info("BOT READY")
 
@@ -127,6 +129,8 @@ async def send_message():
     embed = get_course_list("Genap", "02.00.12.01-2020")
     if embed.description != bot.last_message:
         bot.last_message = embed.description
+        with open("last_message.cekasdosan", "w") as f:
+            f.write(bot.last_message)
         await channel.send(embed=embed)
         log.info(f"SENT TO {channel.guild}/{channel.name}")
     else:
