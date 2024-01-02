@@ -1,139 +1,104 @@
-import random
-import discord
-import os
 import datetime
+import requests
+import os
+import re
+import discord
 import logging
 import sys
-from dotenv import load_dotenv
 from discord.ext import tasks
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.wait import WebDriverWait
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.support import expected_conditions
-from pyvirtualdisplay import Display
+from bs4 import BeautifulSoup, NavigableString
+from dotenv import load_dotenv
 
 load_dotenv()
 
-WEBSITE_URL = "https://siasisten.cs.ui.ac.id/login/"
+WEBSITE_URL = "https://siasisten.cs.ui.ac.id/"
 USERNAME = os.getenv("SIAK_USERNAME")
 PASSWORD = os.getenv("SIAK_PASSWORD")
 TOKEN = os.getenv("DISCORD_BOT_TOKEN")
 CHANNEL_ID = 1014578047028052048
-
 TIMEZONE = datetime.timezone(datetime.timedelta(hours=7))
 
-chrome_options = Options()
-chrome_options.add_argument("--headless")
+SEMESTER = "Genap"
+KODE_KURIKULUM = "02.00.12.01-2020"
 
 bot = discord.Client(intents=discord.Intents.all())
-
 log = logging.getLogger()
-logging.basicConfig(level=logging.INFO, 
-                    format="%(asctime)s: %(message)s", 
-                    datefmt="%d %b %Y %H:%M:%S", 
+logging.basicConfig(level=logging.INFO,
+                    format="%(asctime)s: %(message)s",
+                    datefmt="%d %b %Y %H:%M:%S",
                     handlers=[
                         logging.FileHandler("log"),
                         logging.StreamHandler(sys.stdout)])
 
-display = Display(visible=0, size=(800,600))
-display.start()
+@tasks.loop(hours=1)
+async def send_message():
+    channel = bot.get_channel(CHANNEL_ID)
 
-def get_course_list(semester, kurikulum, tahun=datetime.datetime.now().year):
-    log.info("CHECK STARTED")
+    with requests.session() as session:
+        login_page = session.get(WEBSITE_URL+"login/")
+        soup = BeautifulSoup(login_page.text, features="html.parser")
 
-    driver = webdriver.Chrome(options=chrome_options)
-    driver.get(WEBSITE_URL)
+        csrf_token = soup.find('input', {'name': 'csrfmiddlewaretoken'})['value']
 
-    username_field = driver.find_element(By.ID, "id_username")
-    password_field = driver.find_element(By.ID, "id_password")
+        payload = {
+            "csrfmiddlewaretoken": csrf_token,
+            "username": USERNAME,
+            "password": PASSWORD,
+            "next": ""
+        }
 
-    username_field.send_keys(USERNAME)
-    password_field.send_keys(PASSWORD)
+        headers = {
+            "Referer": WEBSITE_URL+"login/"
+        }
 
-    login_button = driver.find_element(By.CLASS_NAME, "submit")
-    login_button.click()
+        login_request = session.post(
+            WEBSITE_URL+"login/", payload, headers=headers)
+        soup = BeautifulSoup(login_request.text,
+                             features="html.parser")
 
-    log.info("LOGGED IN")
+        tahun_ajaran: list[NavigableString] = list(dict.fromkeys(soup.findAll(
+            string=re.compile(f"{SEMESTER} 2023/2024"))))
+        table = tahun_ajaran[0].next_element.next_element
 
-    WebDriverWait(driver, 20).until(expected_conditions.presence_of_element_located((By.XPATH, "/html/body/div[@class='container']/div[@id='content']/div[@id='content']/div[@id='main-content']/h2[@class='content-title']")))
+        embed = discord.Embed(title=f"CekAsdosan - {SEMESTER} 2023/2024")
+        msgs = []
 
-    classes = driver.find_elements(By.XPATH, "//td[contains(text(), '" + kurikulum + "') and ancestor::table/preceding-sibling::h4[1][contains(text(), '" + f"{semester} {tahun}/{tahun+1}" + "')]]")
+        lowongans = table.findAll(string=re.compile(KODE_KURIKULUM))
+        for lowongan in lowongans:
+            kode_matkul = str(lowongan).split("-")[0].strip()
+            nama_matkul = str(lowongan.next_element.next_element).strip()
+            dosen = str(
+                lowongan.next_element.next_element.next_element.next_element.next_element).strip()
+            lowongan_buka = str(
+                lowongan.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element).strip()
+            lowongan_buka = "Open" if lowongan_buka == "Buka" else "Closed"
+            jumlah_lowongan = str(
+                lowongan.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element).strip().split()[0]
+            jumlah_pelamar = str(
+                lowongan.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element).strip().split()[0]
+            jumlah_diterima = str(
+                lowongan.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element).strip().split()[0]
 
-    if classes != []:
-        log.info(f"{semester.upper()} {tahun}/{tahun+1} IS OPEN")
+            msgs.append(f"{kode_matkul} {nama_matkul} {dosen} {lowongan_buka} {jumlah_lowongan} {jumlah_pelamar} {jumlah_diterima}")
+            embed.add_field(name=kode_matkul, value=f"{nama_matkul} - {dosen}\nStatus: {lowongan_buka}\nOpen: {jumlah_lowongan}\nRegistrant: {jumlah_pelamar}\nAccepted: {jumlah_diterima}", inline=False)
+            log.info(f"{kode_matkul} - {nama_matkul}")
 
-        msg = f"{semester} {tahun}/{tahun+1} is open.\n\n" + "\n".join(["- " + i.text.replace("\n", " ") for i in classes])
-    else:
-        log.info(f"{semester.upper()} {tahun}/{tahun+1} IS NOT OPEN")
-        msg = f"{semester} {tahun}/{tahun+1} is not open."
-    log.info(msg)
-    return discord.Embed(
-        title="CekAsdosan",
-        description=msg
-    )
+        if "\n".join(msgs) != bot.last_message:
+            with open("last_message.cekasdosan", "w") as f:
+                bot.last_message = "\n".join(msgs)
+                f.write(bot.last_message)
+            await channel.send(embed=embed)
+
+            log.info("MESSAGE SENT")
+        else:
+            log.info("MESSAEGE NOT SENT: MESSAGE SAME AS LAST MESSAGE")
 
 
 @bot.event
 async def on_ready():
-    os.system("clear")
     with open("last_message.cekasdosan", "r") as f:
         bot.last_message = f.read()
-        log.info(bot.last_message)
     send_message.start()
     log.info("BOT READY")
-
-@bot.event
-async def on_message(msg: discord.Message):
-    if not msg.author.bot and msg.content.lower() == "check" and msg.channel.id == CHANNEL_ID:
-        log.info(f"CHECK REQUEST BY {msg.author.name}")
-        await send_message()
-
-    if msg.guild is None and not msg.author.bot and msg.content.lower().startswith("check"):
-        log.info(f"DM CHECK REQUEST BY {msg.author.name}")
-
-        user = bot.get_user(msg.author.id)
-
-        if msg.content.lower() == "check":
-            await user.send(embed=discord.Embed(
-                title="CekAsdosan",
-                description="Usage: check (ganjil/genap/pendek) (tahun) (ik/kki/any)"
-            ))
-        else:
-            parsed_msg = msg.content.split(" ")
-            semester = parsed_msg[1].capitalize()
-            tahun = int(parsed_msg[2])
-            prodi = parsed_msg[3].upper()
-
-            if prodi == "IK":
-                embed = get_course_list(semester, "01.00", tahun)
-                await user.send(embed=embed)
-                log.info(f"SENT TO {msg.author.name}")
-            elif prodi == "SI":
-                embed = get_course_list(semester, "06.00")
-                await user.send(embed=embed)
-                log.info(f"SENT TO {msg.author.name}")
-            elif prodi == "KKI":
-                embed = get_course_list(semester, "02.00", tahun)
-                await user.send(embed=embed)
-                log.info(f"SENT TO {msg.author.name}")
-            else:
-                embed = get_course_list(semester, "12.01", tahun)
-                await user.send(embed=embed)
-                log.info(f"SENT TO {msg.author.name}")
-
-
-@tasks.loop(hours=1)
-async def send_message():
-    channel = bot.get_channel(CHANNEL_ID)
-    embed = get_course_list("Genap", "02.00.12.01-2020")
-    if embed.description != bot.last_message:
-        bot.last_message = embed.description
-        with open("last_message.cekasdosan", "w") as f:
-            f.write(bot.last_message)
-        await channel.send(embed=embed)
-        log.info(f"SENT TO {channel.guild}/{channel.name}")
-    else:
-        log.info("Message not sent because message is the same as before")
 
 bot.run(TOKEN, log_handler=None)
