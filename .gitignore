@@ -2,3 +2,4 @@
 log
 env/
 last_message.json
+__pycache__/
