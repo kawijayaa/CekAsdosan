@@ -14,7 +14,7 @@ WEBSITE_URL = os.getenv("CEKASDOSAN_WEBSITE_URL")
 USERNAME = os.getenv("CEKASDOSAN_SIAK_USERNAME")
 PASSWORD = os.getenv("CEKASDOSAN_SIAK_PASSWORD")
 TOKEN = os.getenv("CEKASDOSAN_BOT_TOKEN")
-CHANNEL_ID = os.getenv("CEKASDOSAN_CHANNEL_ID")
+CHANNEL_ID = int(os.getenv("CEKASDOSAN_CHANNEL_ID"))
 KODE_KURIKULUM = os.getenv("CEKASDOSAN_KODE_KURIKULUM")
 
 TIMEZONE = datetime.timezone(datetime.timedelta(hours=7))
@@ -65,6 +65,7 @@ async def send_message():
         await channel.send(embed=embed)
         log.info("MESSAGE SENT")
 
+        bot.last_message = lowongans
         with open("last_message.json", "w") as f:
             json.dump(lowongans, f)
     else:
