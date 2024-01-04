@@ -50,8 +50,10 @@ class Scraper(object):
                 lowongan.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element).strip().split()[0]
             jumlah_diterima = str(
                 lowongan.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element).strip().split()[0]
-
+            link_daftar = str(
+                lowongan.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element['href']
+            )
             msgs.append(dict(kode_matkul=kode_matkul, nama_matkul=nama_matkul, dosen=dosen, status=status,
-                        jumlah_lowongan=jumlah_lowongan, jumlah_pelamar=jumlah_pelamar, jumlah_diterima=jumlah_diterima))
+                        jumlah_lowongan=jumlah_lowongan, jumlah_pelamar=jumlah_pelamar, jumlah_diterima=jumlah_diterima, link_daftar=link_daftar))
         
         return dict(tahun_ajaran=tahun_ajaran, lowongan=msgs)

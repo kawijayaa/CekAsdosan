@@ -33,7 +33,7 @@ scr = Scraper()
 scr.login(WEBSITE_URL+"login/", USERNAME, PASSWORD)
 
 
-@tasks.loop(minutes=30)
+@tasks.loop(minutes=5)
 async def send_message():
     log.info("CHECK STARTED")
     channel = bot.get_channel(CHANNEL_ID)
@@ -52,6 +52,7 @@ async def send_message():
             jumlah_lowongan = lowongan.get('jumlah_lowongan')
             jumlah_pelamar = lowongan.get('jumlah_pelamar')
             jumlah_diterima = lowongan.get('jumlah_diterima')
+            link_daftar = lowongan.get('link_daftar')
 
             log.info(f"{kode_matkul} - {nama_matkul}")
             embed.add_field(name=kode_matkul,
@@ -59,18 +60,20 @@ async def send_message():
                                     Status: {status}\n\
                                      Open: {jumlah_lowongan}\n\
                                     Registrants: {jumlah_pelamar}\n\
-                                    Accepted: {jumlah_diterima}", 
+                                    Accepted: {jumlah_diterima}\n\
+                                    Register Link: {WEBSITE_URL[:-1]}{link_daftar}",
                             inline=False)
-    
+
         await channel.send(embed=embed)
         log.info("MESSAGE SENT")
 
-        bot.last_message = lowongans
         with open("last_message.json", "w") as f:
             json.dump(lowongans, f)
     else:
         log.info("MESSAGE NOT SENT: MESSAGE SAME AS LAST MESSAGE")
 
+    with open("last_message.json") as f:
+        bot.last_message = json.load(f)
 
 @bot.event
 async def on_ready():
