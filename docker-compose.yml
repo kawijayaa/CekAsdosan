@@ -1,0 +1,5 @@
+services:
+  cekasdosan:
+    build:
+      context: .
+    container_name: cekasdosan

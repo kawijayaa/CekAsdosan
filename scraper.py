@@ -50,9 +50,14 @@ class Scraper(object):
                 lowongan.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element).strip().split()[0]
             jumlah_diterima = str(
                 lowongan.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element).strip().split()[0]
-            link_daftar = str(
-                lowongan.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element['href']
-            )
+
+            if status == "Buka":
+                link_daftar = str(
+                    lowongan.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element.next_element['href']
+                )
+            else:
+                link_daftar = ""
+
             msgs.append(dict(kode_matkul=kode_matkul, nama_matkul=nama_matkul, dosen=dosen, status=status,
                         jumlah_lowongan=jumlah_lowongan, jumlah_pelamar=jumlah_pelamar, jumlah_diterima=jumlah_diterima, link_daftar=link_daftar))
         

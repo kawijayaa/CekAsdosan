@@ -10,12 +10,22 @@ from scraper import Scraper
 
 load_dotenv()
 
-WEBSITE_URL = os.getenv("CEKASDOSAN_WEBSITE_URL")
+WEBSITE_URL = os.getenv("CEKASDOSAN_WEBSITE_URL", "https://siasisten.cs.ui.ac.id/")
 USERNAME = os.getenv("CEKASDOSAN_SIAK_USERNAME")
+if not USERNAME:
+    raise ValueError("CEKASDOSAN_SIAK_USERNAME is not set")
+
 PASSWORD = os.getenv("CEKASDOSAN_SIAK_PASSWORD")
+if not PASSWORD:
+    raise ValueError("CEKASDOSAN_SIAK_PASSWORD is not set")
+
 TOKEN = os.getenv("CEKASDOSAN_BOT_TOKEN")
-CHANNEL_ID = int(os.getenv("CEKASDOSAN_CHANNEL_ID"))
-KODE_KURIKULUM = os.getenv("CEKASDOSAN_KODE_KURIKULUM")
+try:
+    CHANNEL_ID = int(os.getenv("CEKASDOSAN_CHANNEL_ID"))
+except ValueError:
+    raise ValueError("CEKASDOSAN_CHANNEL_ID is not set")
+
+KODE_KURIKULUM = os.getenv("CEKASDOSAN_KODE_KURIKULUM", "")
 
 TIMEZONE = datetime.timezone(datetime.timedelta(hours=7))
 
@@ -54,14 +64,23 @@ async def send_message():
             jumlah_diterima = lowongan.get('jumlah_diterima')
             link_daftar = lowongan.get('link_daftar')
 
-            log.info(f"{kode_matkul} - {nama_matkul}")
-            embed.add_field(name=kode_matkul,
-                            value=f"{nama_matkul} - {dosen}\n\
+            if status == "Buka":
+                embed_message = f"{nama_matkul} - {dosen}\n\
                                     Status: {status}\n\
                                      Open: {jumlah_lowongan}\n\
                                     Registrants: {jumlah_pelamar}\n\
                                     Accepted: {jumlah_diterima}\n\
-                                    Register Link: {WEBSITE_URL[:-1]}{link_daftar}",
+                                    Register Link: {WEBSITE_URL[:-1]}{link_daftar}"
+            else:
+                embed_message = f"{nama_matkul} - {dosen}\n\
+                                    Status: {status}\n\
+                                     Open: {jumlah_lowongan}\n\
+                                    Registrants: {jumlah_pelamar}\n\
+                                    Accepted: {jumlah_diterima}"
+
+            log.info(f"{kode_matkul} - {nama_matkul}")
+            embed.add_field(name=kode_matkul,
+                            value=embed_message,
                             inline=False)
 
         await channel.send(embed=embed)
@@ -72,13 +91,20 @@ async def send_message():
     else:
         log.info("MESSAGE NOT SENT: MESSAGE SAME AS LAST MESSAGE")
 
-    with open("last_message.json") as f:
-        bot.last_message = json.load(f)
+    try:
+        with open("last_message.json") as f:
+            bot.last_message = json.load(f)
+    except FileNotFoundError:
+        bot.last_message = {}
 
 @bot.event
 async def on_ready():
-    with open("last_message.json", "r") as f:
-        bot.last_message = json.load(f)
+    try:
+        with open("last_message.json") as f:
+            bot.last_message = json.load(f)
+    except FileNotFoundError:
+        bot.last_message = {}
+
     send_message.start()
     log.info("BOT READY")
 
